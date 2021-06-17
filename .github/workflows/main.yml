@@ -1,0 +1,73 @@
+name: Main 
+
+on: [push]
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v1
+            - uses: actions-rs/toolchain@v1
+              with:
+                    toolchain: nightly
+                    override: true
+
+            - name: Run build
+              run: cargo build --verbose
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v1
+            - uses: actions-rs/toolchain@v1
+              with:
+                    toolchain: nightly
+                    override: true
+
+            - name: Run tests
+              run: cargo test --verbose
+
+    lint:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v1
+            - uses: actions-rs/toolchain@v1
+              with:
+                    toolchain: nightly
+                    components:
+                        - rustfmt
+                        - clippy
+                    override: true
+
+            - name: Run Rustfmt
+              run: cargo fmt -- --check
+            
+            - name: Run Clippy
+              run: cargo clippy --verbose
+
+            - name: Run Cargo check
+              run: cargo check --verbose
+    
+    benchmark:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v1
+            - uses: actions-rs/toolchain@v1
+              with:
+                    toolchain: nightly
+                    override: true
+
+            - name: Run benchmarks
+              run: cargo bench --verbose
+
+    audit:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v1
+            - uses: actions-rs/toolchain@v1
+              with:
+                    toolchain: nightly
+                    override: true
+
+            - name: Run dependency security audit
+              run: cargo --verbose audit
+
