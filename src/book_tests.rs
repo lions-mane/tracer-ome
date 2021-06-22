@@ -461,3 +461,96 @@ pub async fn test_partial_matching_mutability() {
 
     assert_eq!(actual_book, expected_book);
 }
+
+#[tokio::test]
+pub async fn test_many_partial_matches() {
+    /* need at least four for this test */
+    let traders: Vec<Address> = vec![
+        Address::random(),
+        Address::random(),
+        Address::random(),
+        Address::random(),
+    ];
+    let the_far_future: DateTime<Utc> = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(1699025703, 0),
+        Utc,
+    );
+    let market: Address = Address::zero();
+
+    let orders: Vec<Order> = vec![
+        /* SHORT @ $1.15 for 10 */
+        Order::new(
+            traders[0],
+            market,
+            OrderSide::Ask,
+            U256::from_dec_str("1150000000000000000").unwrap(),
+            U256::from_dec_str("10000000000000000000").unwrap(),
+            the_far_future,
+            Utc::now(),
+            vec![],
+        ),
+        /* SHORT @ $1.10 for 10 */
+        Order::new(
+            traders[1],
+            market,
+            OrderSide::Ask,
+            U256::from_dec_str("1100000000000000000").unwrap(),
+            U256::from_dec_str("10000000000000000000").unwrap(),
+            the_far_future,
+            Utc::now(),
+            vec![],
+        ),
+        /* SHORT @ $1.05 for 10 */
+        Order::new(
+            traders[2],
+            market,
+            OrderSide::Ask,
+            U256::from_dec_str("1050000000000000000").unwrap(),
+            U256::from_dec_str("10000000000000000000").unwrap(),
+            the_far_future,
+            Utc::now(),
+            vec![],
+        ),
+        /* LONG @ 1.15 for 50 */
+        Order::new(
+            traders[3],
+            market,
+            OrderSide::Bid,
+            U256::from_dec_str("1150000000000000000").unwrap(),
+            U256::from_dec_str("50000000000000000000").unwrap(),
+            the_far_future,
+            Utc::now(),
+            vec![],
+        ),
+    ];
+
+    let mut actual_book: Book = Book::new(market);
+
+    for order in orders.iter() {
+        actual_book
+            .submit(order.clone(), TEST_RPC_ADDRESS.to_string())
+            .await
+            .unwrap();
+    }
+
+    let expected_book: Book = Book {
+        market,
+        bids: {
+            let mut side: BTreeMap<U256, VecDeque<Order>> = BTreeMap::new();
+            let mut level: VecDeque<Order> = VecDeque::new();
+            let mut order: Order = orders[3].clone();
+            order.remaining =
+                U256::from_dec_str("20000000000000000000").unwrap();
+            level.push_back(order);
+            side.insert(orders[3].clone().price, level);
+            side
+        },
+        asks: BTreeMap::new(),
+        ltp: orders[0].price, // trade price is whichever order came first eg make
+        depth: (1, 0),
+        crossed: false,
+        spread: U256::from_dec_str("0").unwrap(), // todo check how this is calculated
+    };
+
+    assert_eq!(actual_book, expected_book);
+}
